@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopping Cart</title>
+
+<style>
+body { font-family: Arial; max-width: 700px; margin: 30px auto; }
+h1 { color: #1f4e79; }
+.card { border: 1px solid #ccc; border-radius: 10px; padding: 16px; margin: 16px 0; background: #fafafa; }
+button { padding: 8px 12px; margin: 5px; border: none; border-radius: 5px; background: #1065c8; color: white; cursor: pointer; }
+button:hover { background: #07509e; }
+.logout { background: #d22929; }
+</style>
+</head>
+
+<body>
+
+<h1>Shopping Cart</h1>
+
+<div class="card">
+    <h3>Tracking</h3>
+    <p>Cookie visits: <span id="cookieCount">-</span></p>
+    <p>Session views: <span id="sessionCount">-</span></p>
+    <p id="status">Loading...</p>
+    <button onclick="loadVisits()">Refresh</button>
+    <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="card">
+    <h3>User</h3>
+    <button onclick="login()">Login</button>
+</div>
+
+<div class="card">
+    <h3>Products</h3>
+    <button onclick="loadProducts()">Load Products</button>
+    <div id="products"></div>
+</div>
+
+<div class="card">
+    <h3>Your Cart</h3>
+    <button onclick="viewCart()">View Cart</button>
+    <div id="cart"></div>
+</div>
+
+<script>
+async function loadVisits() {
+    const res = await fetch('/api/visits');
+    const data = await res.json();
+    document.getElementById('cookieCount').textContent = data.cookieVisits;
+    document.getElementById('sessionCount').textContent = data.sessionViews;
+    document.getElementById('status').textContent = "Updated at " + new Date().toLocaleTimeString();
+}
+
+async function login() {
+    await fetch('/login');
+    alert("Logged in");
+}
+
+async function loadProducts() {
+    const res = await fetch('/products');
+    const products = await res.json();
+
+    let html = "";
+    products.forEach(p => {
+        html += `
+        <p>${p.name} - ₹${p.price}
+        <button onclick="addToCart(${p.id})">Add</button></p>
+        `;
+    });
+
+    document.getElementById("products").innerHTML = html;
+}
+
+async function addToCart(id) {
+    await fetch(`/cart/add/${id}`);
+    viewCart();
+}
+
+async function inc(id) {
+    await fetch(`/cart/inc/${id}`);
+    viewCart();
+}
+
+async function dec(id) {
+    await fetch(`/cart/dec/${id}`);
+    viewCart();
+}
+
+async function viewCart() {
+    const res = await fetch('/cart');
+    const data = await res.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
+
+    let html = "";
+    data.items.forEach(item => {
+        html += `
+        <p>
+            ${item.name} - ₹${item.price} 
+            Qty: ${item.qty}
+            <button onclick="inc(${item.id})">+</button>
+            <button onclick="dec(${item.id})">-</button>
+        </p>
+        `;
+    });
+
+    html += `<h4>Total Items: ${data.total}</h4>`;
+
+    document.getElementById("cart").innerHTML = html;
+}
+
+async function logout() {
+    await fetch('/logout');
+    loadVisits();
+}
+
+loadVisits();
+</script>
+
+</body>
+</html>
