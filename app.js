@@ -20,6 +20,25 @@ app.use(session({
 
 app.use(express.static(path.join(__dirname)));
 
+const TIMEOUT = 2000;
+
+app.use((req, res, next) => {
+    if (req.session.user) {
+        const now = Date.now();
+
+        if (req.session.lastActivity && (now - req.session.lastActivity > TIMEOUT)) {
+            req.session.destroy(() => {
+                return res.status(440).json({ error: "Session expired" });
+            });
+        } else {
+            req.session.lastActivity = now;
+            next();
+        }
+    } else {
+        next();
+    }
+});
+
 const products = [
     { id: 1, name: "Laptop", price: 50000 },
     { id: 2, name: "Phone", price: 20000 },
@@ -43,6 +62,7 @@ app.get('/api/visits', (req, res) => {
 app.get('/login', (req, res) => {
     req.session.user = "user1";
     req.session.cart = [];
+    req.session.lastActivity = Date.now();
     res.json({ message: "Logged in" });
 });
 
@@ -61,7 +81,6 @@ app.get('/cart/add/:id', (req, res) => {
     }
 
     let cart = req.session.cart;
-
     let item = cart.find(i => i.id == product.id);
 
     if (item) {
